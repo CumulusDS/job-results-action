@@ -43,7 +43,7 @@ runs:
         results="${results//'%'/'%25'}"
         results="${results//$'\n'/'%0A'}"
         results="${results//$'\r'/'%0D'}"
-        echo "::set-output name=jobs::$(echo "$results")"
+        echo "::set-output name=results::$(echo "$results")"
 
         echo "old_results=$results" >> $GITHUB_ENV
         echo "::endgroup::"
