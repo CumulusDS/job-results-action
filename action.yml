@@ -57,7 +57,7 @@ runs:
         while [ $i -lt $item_length ]; do
             echo "index ${i}"
             echo $info | jq --argjson index $i '.[$index]'
-            name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_')
+            name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
             result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
             url=$(echo $info | jq -r --argjson index $i '.[$index].url')
             echo "::set-output name=${name}_result::$(echo "$result")"
