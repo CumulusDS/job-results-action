@@ -8,7 +8,7 @@ inputs:
 outputs:
   totalJobs:
     description: "jobs results"
-    value: "${{ steps.jobs.outputs.total }}"
+    value: "${{ steps.jobs.outputs.totalJobs }}"
   jobs:
     description: "jobs results"
     value: "${{ steps.jobs.outputs.results }}"
@@ -32,11 +32,19 @@ runs:
           | jq -s '.'
         )
         echo $info | jq .
-        results="${info//'%'/'%25'}"
+
+        results=$(echo $info | jq -r '.')
+
+        echo "results<<EOF" >> $GITHUB_ENV
+        echo "$results" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+        results="${results//'%'/'%25'}"
         results="${results//$'\n'/'%0A'}"
         results="${results//$'\r'/'%0D'}"
-        echo "::set-output name=results::$(echo "$results")"
-        echo "results=$results" >> $GITHUB_ENV
+        echo "::set-output name=jobs::$(echo "$results")"
+
+        echo "old_results=$results" >> $GITHUB_ENV
         echo "::endgroup::"
 
 
@@ -46,20 +54,6 @@ runs:
         echo "::set-output name=totalJobs::$(echo "$item_length")"
         echo "totalJobs=$item_length" >> $GITHUB_ENV
         echo "::endgroup::"
-
-
-        #echo "::group::Info with steps included"
-        #info_with_steps=$(
-        #  echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url, steps: .steps}' \
-        #  | jq -s '.'
-        #)
-        #echo $info_with_steps | jq .
-        #resultsSteps="${info_with_steps//'%'/'%25'}"
-        #resultsSteps="${resultsSteps//$'\n'/'%0A'}"
-        #resultsSteps="${resultsSteps//$'\r'/'%0D'}"
-        #echo "::set-output name=resultsSteps::$(echo "$resultsSteps")"
-        #echo "resultsSteps=$resultsSteps" >> $GITHUB_ENV
-        #echo "::endgroup::"
 
 
         echo "::group::Per job"
