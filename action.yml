@@ -1,0 +1,72 @@
+name: 'cfn-lint-action'
+description: 'executes cfn-lint'
+inputs:
+  token:
+    description: 'github token with API access'
+    required: true
+    default: ''
+outputs:
+  jobs:
+    description: "jobs results"
+    value: "${{ steps.jobs.outputs.results }}"
+  jobsSteps:
+    description: "jobs results"
+    value: "${{ steps.jobs.outputs.resultsSteps }}"
+runs:
+  using: "composite"
+  steps:
+    - name: jobs context
+      id: jobs
+      run: |
+        echo "::group::Jobs context"
+        JOBS=$( \
+          curl -s -H 'Authorization: token ${{ secrets.PRIOR_VERSION_TOKEN }}' \
+          -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
+        )
+
+        info=$(
+          echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url}' \
+          | jq -s '.'
+        )
+        echo $info | jq .
+        results="${info//'%'/'%25'}"
+        results="${results//$'\n'/'%0A'}"
+        results="${results//$'\r'/'%0D'}"
+        echo "::set-output name=results::$(echo "$results")"
+        echo "::endgroup::"
+
+        echo "::group::How many jobs"
+        item_length=$(echo $info | jq length)
+        echo "${item_length} groups"
+        echo "::endgroup::"
+
+        info_with_steps=$(
+          echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url, steps: .steps}' \
+          | jq -s '.'
+        )
+        echo $info_with_steps | jq .
+        resultsSteps="${info_with_steps//'%'/'%25'}"
+        resultsSteps="${resultsSteps//$'\n'/'%0A'}"
+        resultsSteps="${resultsSteps//$'\r'/'%0D'}"
+        echo "::set-output name=resultsSteps::$(echo "$resultsSteps")"
+        # echo "::endgroup::"
+
+        echo "::group::Per job"
+        info_length=$(echo $info | jq length)
+        i=0
+        while [ $i -lt $item_length ]; do
+            echo "index ${i}"
+            echo $info | jq --argjson index $i '.[$index]'
+            name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_')
+            result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
+            url=$(echo $info | jq -r --argjson index $i '.[$index].url')
+            echo "::set-output name=${name}_result::$(echo "$result")"
+            echo "::set-output name=${name}_url::$(echo "$url")"
+            echo $name
+            echo $result
+            echo $url
+            echo ""
+            i=$((i+1))
+        done
+        echo "::endgroup::"
+      shell: bash
