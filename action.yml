@@ -20,7 +20,7 @@ runs:
       run: |
         echo "::group::Jobs context"
         JOBS=$( \
-          curl -s -H 'Authorization: token ${{ secrets.PRIOR_VERSION_TOKEN }}' \
+          curl -s -H 'Authorization: token ${{ inputs.token }}' \
           -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
         )
 
