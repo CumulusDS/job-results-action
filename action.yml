@@ -6,6 +6,9 @@ inputs:
     required: true
     default: ''
 outputs:
+  totalJobs:
+    description: "jobs results"
+    value: "${{ steps.jobs.outputs.total }}"
   jobs:
     description: "jobs results"
     value: "${{ steps.jobs.outputs.results }}"
@@ -33,13 +36,19 @@ runs:
         results="${results//$'\n'/'%0A'}"
         results="${results//$'\r'/'%0D'}"
         echo "::set-output name=results::$(echo "$results")"
+        echo "results=$results" >> $GITHUB_ENV
         echo "::endgroup::"
+
 
         echo "::group::How many jobs"
         item_length=$(echo $info | jq length)
-        echo "${item_length} groups"
+        echo "${item_length} total jobs"
+        echo "::set-output name=totalJobs::$(echo "$item_Length")"
+        echo "totalJobs=$item_length" >> $GITHUB_ENV
         echo "::endgroup::"
 
+
+        echo "::group::Info with steps included"
         info_with_steps=$(
           echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url, steps: .steps}' \
           | jq -s '.'
@@ -49,22 +58,29 @@ runs:
         resultsSteps="${resultsSteps//$'\n'/'%0A'}"
         resultsSteps="${resultsSteps//$'\r'/'%0D'}"
         echo "::set-output name=resultsSteps::$(echo "$resultsSteps")"
-        # echo "::endgroup::"
+        echo "resultsSteps=$resultsSteps" >> $GITHUB_ENV
+        echo "::endgroup::"
+
 
         echo "::group::Per job"
         info_length=$(echo $info | jq length)
         i=0
         while [ $i -lt $item_length ]; do
-            echo "index ${i}"
+            echo "Job at index ${i}"
             echo $info | jq --argjson index $i '.[$index]'
+
             name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
             result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
             url=$(echo $info | jq -r --argjson index $i '.[$index].url')
-            echo "::set-output name=${name}_result::$(echo "$result")"
-            echo "::set-output name=${name}_url::$(echo "$url")"
-            echo $name
-            echo $result
-            echo $url
+
+            #echo "::set-output name=${name}_result::$(echo "$result")"
+            #echo "::set-output name=${name}_url::$(echo "$url")"
+            echo "${name}_result=$result" >> $GITHUB_ENV
+            echo "${name}_url=$url" >> $GITHUB_ENV
+
+            echo "Name:    $name"
+            echo "Result:  $result"
+            echo "URL:     $url"
             echo ""
             i=$((i+1))
         done
