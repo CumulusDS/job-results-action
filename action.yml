@@ -35,9 +35,10 @@ runs:
 
         results=$(echo $info | jq -r '.')
 
-        echo "results<<EOF" >> $GITHUB_ENV
-        echo "$results" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        # breaks: https://github.com/CumulusDS/serverless-template/runs/2043584138?check_suite_focus=true
+        #echo "results<<EOF" >> $GITHUB_ENV
+        #echo "$results" >> $GITHUB_ENV
+        #echo "EOF" >> $GITHUB_ENV
 
         results="${results//'%'/'%25'}"
         results="${results//$'\n'/'%0A'}"
