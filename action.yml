@@ -21,7 +21,6 @@ runs:
     - name: jobs context
       id: jobs
       run: |
-        echo "::group::Jobs context"
         JOBS=$( \
           curl -s -H 'Authorization: token ${{ inputs.token }}' \
           -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
@@ -31,21 +30,48 @@ runs:
           echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url}' \
           | jq -s '.'
         )
-        echo $info | jq .
+        echo "::group::Jobs context"
+        echo $info | jq '.'
+        echo "::endgroup::"
 
-        results=$(echo $info | jq -r '.')
 
         # breaks: https://github.com/CumulusDS/serverless-template/runs/2043584138?check_suite_focus=true
-        #echo "results<<EOF" >> $GITHUB_ENV
-        #echo "$results" >> $GITHUB_ENV
+        #results=$(echo $info | jq -r '.')          # moved to down below
+        #echo "results_multi_line<<EOF" >> $GITHUB_ENV
+        #echo "$results" | jq -r '.' >> $GITHUB_ENV
         #echo "EOF" >> $GITHUB_ENV
+        echo "::group::Set Results Multi Line"
+        results_multi_line=$(echo $info | jq -r '.')
+        echo "results_multi_line<<EOF" >> $GITHUB_ENV
+        echo $info | jq -r '.' >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        echo "::endgroup::"
 
+        echo "::group::Set Results Single Line"
+        results=$(echo $info | jq -r '.')
         results="${results//'%'/'%25'}"
         results="${results//$'\n'/'%0A'}"
         results="${results//$'\r'/'%0D'}"
         echo "::set-output name=jobs::$(echo "$results")"
+        results_single_line=$results
+        echo "results_single_line=$results_single_line" >> $GITHUB_ENV
+        echo "::endgroup::"
 
-        echo "results=$results" >> $GITHUB_ENV
+        echo "::group::Echo Results SingleLine"
+        echo $results_single_line
+        echo "::endgroup::"
+
+        echo "::group::Echo Results MultiLine"
+        echo $results_multi_line
+        echo "::endgroup::"
+
+        # same as next one, so commenting out
+        #echo "::group::Echo Results MultiLine | jq"
+        #echo $results_multi_line | jq '.'
+        #echo "::endgroup::"
+
+        echo "::group::Echo Results MultiLine | jq -r "
+        echo $results_multi_line | jq -r '.'
         echo "::endgroup::"
 
 
@@ -57,27 +83,33 @@ runs:
         echo "::endgroup::"
 
 
-        echo "::group::Per job"
-        info_length=$(echo $info | jq length)
+        echo "::group::set environment variables per job"
         i=0
         while [ $i -lt $item_length ]; do
-            echo "Job at index ${i}"
-            echo $info | jq --argjson index $i '.[$index]'
+          echo "Job at index ${i}"
+          echo $info | jq --argjson index $i '.[$index]'
 
-            name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
-            result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
-            url=$(echo $info | jq -r --argjson index $i '.[$index].url')
+          name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
+          result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
+          url=$(echo $info | jq -r --argjson index $i '.[$index].url')
 
-            echo "Name:    $name"
-            echo "Result:  $result"
-            echo "URL:     $url"
-            #echo "::set-output name=${name}_result::$(echo "$result")"
-            #echo "::set-output name=${name}_url::$(echo "$url")"
-            echo "${name}_result=$result" >> $GITHUB_ENV
-            echo "${name}_url=$url" >> $GITHUB_ENV
-            echo ""
-            echo ""
-            i=$((i+1))
+          echo "Name:    $name"
+          echo "Result:  $result"
+          echo "URL:     $url"
+          #echo "::set-output name=${name}_result::$(echo "$result")"
+          #echo "::set-output name=${name}_url::$(echo "$url")"
+          echo "${name}_result=$result" >> $GITHUB_ENV
+          echo "${name}_url=$url" >> $GITHUB_ENV
+          echo ""
+          echo ""
+          i=$((i+1))
         done
+        echo "::endgroup::"
+      shell: bash
+    - name: Print single_line Output
+      id: print
+      run: |
+        echo "::group::print output"
+        echo "${{ env.results_multi_line }}"
         echo "::endgroup::"
       shell: bash
