@@ -37,31 +37,40 @@ runs:
         echo $info | jq '.'
         echo "::endgroup::"
 
-        #results=$(echo $info | jq -r '.')          # moved to down below
-        # breaks: https://github.com/CumulusDS/serverless-template/runs/2043584138?check_suite_focus=true
-        #echo "results<<EOF" >> $GITHUB_ENV
-        #echo "$results" >> $GITHUB_ENV
-        #echo "EOF" >> $GITHUB_ENV
 
-        echo "::group::Set Results"
+        # breaks: https://github.com/CumulusDS/serverless-template/runs/2043584138?check_suite_focus=true
+        #results=$(echo $info | jq -r '.')          # moved to down below
+        #echo "results_multi_line<<EOF" >> $GITHUB_ENV
+        #echo "$results" | jq -r '.' >> $GITHUB_ENV
+        #echo "EOF" >> $GITHUB_ENV
+        echo "::group::Set Results Multi Line"
+        echo "results_multi_line<<EOF" >> $GITHUB_ENV
+        echo $info | jq -r '.' >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        echo "::endgroup::"
+
+        echo "::group::Set Results Single Line"
         results=$(echo $info | jq -r '.')
         results="${results//'%'/'%25'}"
         results="${results//$'\n'/'%0A'}"
         results="${results//$'\r'/'%0D'}"
         #echo "::set-output name=jobs::$(echo "$results")"
-        echo "results=$results" >> $GITHUB_ENV
+        echo "results_single_line=$results" >> $GITHUB_ENV
         echo "::endgroup::"
 
-        echo "::group::Echo Results"
-        echo $results
+        echo "::group::Echo Results SingleLine"
+        echo $results_single_line
+        echo "::endgroup::"
+        echo "::group::Echo Results MultiLine"
+        echo $results_multi_line
         echo "::endgroup::"
 
-        echo "::group::Echo Results | jq"
-        echo $results | jq '.'
+        echo "::group::Echo Results MultiLine | jq"
+        echo $results_multi_line | jq '.'
         echo "::endgroup::"
 
-        echo "::group::Echo Results | jq -r "
-        echo $results | jq -r '.'
+        echo "::group::Echo Results MultiLine | jq -r "
+        echo $results_multi_line | jq -r '.'
         echo "::endgroup::"
 
 
@@ -74,7 +83,7 @@ runs:
 
 
         echo "::group::set environment variables per job"
-        info_length=$(echo $info | jq length) && i=0
+        i=0
         while [ $i -lt $item_length ]; do
           echo "Job at index ${i}"
           echo $info | jq --argjson index $i '.[$index]'
