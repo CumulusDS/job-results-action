@@ -9,9 +9,9 @@ outputs:
   totalJobs:
     description: "jobs results"
     value: "${{ steps.jobs.outputs.totalJobs }}"
-  jobs:
-    description: "jobs results"
-    value: "${{ steps.jobs.outputs.jobs }}"
+#  jobs:
+#    description: "jobs results"
+#    value: "${{ steps.jobs.outputs.jobs }}"
 #  jobsSteps:
 #    description: "jobs results"
 #    value: "${{ steps.jobs.outputs.resultsSteps }}"
@@ -21,7 +21,7 @@ runs:
     - name: jobs context
       id: jobs
       run: |
-        echo "::group::Jobs context"
+        echo "::group::get jobs & info"
         JOBS=$( \
           curl -s -H 'Authorization: token ${{ inputs.token }}' \
           -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
@@ -31,7 +31,12 @@ runs:
           echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url}' \
           | jq -s '.'
         )
+        echo "::endgroup::"
+
+        echo "::group::Jobs context"
         echo $info | jq .
+        echo "::endgroup::"
+
 
         results=$(echo $info | jq -r '.')
 
@@ -40,10 +45,10 @@ runs:
         #echo "$results" >> $GITHUB_ENV
         #echo "EOF" >> $GITHUB_ENV
 
-        results="${results//'%'/'%25'}"
-        results="${results//$'\n'/'%0A'}"
-        results="${results//$'\r'/'%0D'}"
-        echo "::set-output name=jobs::$(echo "$results")"
+        #results="${results//'%'/'%25'}"
+        #results="${results//$'\n'/'%0A'}"
+        #results="${results//$'\r'/'%0D'}"
+        #echo "::set-output name=jobs::$(echo "$results")"
 
         echo "results=$results" >> $GITHUB_ENV
         echo "::endgroup::"
