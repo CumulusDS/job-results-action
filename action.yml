@@ -65,9 +65,10 @@ runs:
         echo $results_multi_line
         echo "::endgroup::"
 
-        echo "::group::Echo Results MultiLine | jq"
-        echo $results_multi_line | jq '.'
-        echo "::endgroup::"
+        # same as next one, so commenting out
+        #echo "::group::Echo Results MultiLine | jq"
+        #echo $results_multi_line | jq '.'
+        #echo "::endgroup::"
 
         echo "::group::Echo Results MultiLine | jq -r "
         echo $results_multi_line | jq -r '.'
@@ -108,5 +109,7 @@ runs:
     - name: Print single_line Output
       id: print
       run: |
-        echo "${{ steps.jobs.outputs.jobs }}"
+        echo "::group::print output"
+        echo "${{ env.results_multi_line }}"
+        echo "::endgroup::"
       shell: bash
