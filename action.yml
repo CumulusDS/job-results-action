@@ -27,12 +27,13 @@ runs:
         echo "::group::Matrix check"
         if [ -z ${{ inputs.matrix }} ]; then
           echo "no matrix is set"
-          echp "matrixExists=false" >> $GITHUB_ENV
+          echo "matrixExists=false" >> $GITHUB_ENV
         else
-          echo "matrix is set"
-          echo ${{ toJson(inputs.matrix) }}
+          echo "matrix is set:"
+          echo '${{ inputs.matrix }}'
           echo "matrixExists=true" >> $GITHUB_ENV
         fi
+        echo ""
         echo "::endgroup::"
       shell: bash
     - name: jobs context
@@ -50,19 +51,13 @@ runs:
         results=$(echo $info | jq -r '.')
 
         echo "::group::Jobs context"
-        echo $info | jq '.'
+        echo ${results}
         echo "::endgroup::"
 
-        echo "::group::Set Results Multi Line"
+        echo "::group::Set results environment variable"
         echo "results<<EOF" >> $GITHUB_ENV
-        echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results }} in later steps, though appears set properly o_O
-        #echo ${results} >> $GITHUB_ENV # prints out all on one line, but loses quotes - so breaks all the things - SO TRY toJson!!
+        echo ${results} >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
-        echo "::endgroup::"
-
-        echo "::group::Echo Results MultiLine"
-        #echo $results # comment out to test with just
-        echo $info | jq -r '.'
         echo "::endgroup::"
 
         echo "::group::How many jobs"
@@ -82,7 +77,7 @@ runs:
             matrixJsonLength=$(echo $matrixJson | jq length)
             echo "Matrix has ${matrixJsonLength} objects."
           else
-            echo "has includes key"
+            echo "JSON object has 'includes' key"
             matrixJsonLength=$(echo $matrixJson | jq -r '.include' | jq length)
             echo "Matrix includes has ${matrixJsonLength} objects."
             matrixJson=$(echo $matrixJson | jq -r '.include')
