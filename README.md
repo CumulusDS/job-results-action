@@ -24,7 +24,7 @@ Can be an output from a previous step.  Can be used to specify jobs to search fo
         uses: CumulusDS/job-results-action@master
         with:
           token: ${{ secrets.TOKEN_WITH_ACCESS }}
-          matrix: ${{ needs.unit.outputs.matrix }}
+          matrix: ${{ toJson(needs.unit.outputs.matrix) }}
 ```
 
 wip
