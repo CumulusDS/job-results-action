@@ -44,7 +44,7 @@ runs:
         results_multi_line=$(echo $info | jq -r '.')
         echo "results_multi_line<<EOF" >> $GITHUB_ENV
         #echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results_multi_line }} in later steps, though appears set properly o_O
-        echo "${results_multi_line}" >> $GITHUB_ENV
+        echo ${results_multi_line} >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
         echo "::endgroup::"
 
