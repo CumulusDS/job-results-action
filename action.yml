@@ -46,6 +46,7 @@ runs:
         echo "results_multi_line<<EOF" >> $GITHUB_ENV
         #echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results_multi_line }} in later steps, though appears set properly o_O
         echo ${results_multi_line} >> $GITHUB_ENV # prints out all on one line, but loses quotes - so breaks all the things - SO TRY toJson!!        echo "EOF" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
         echo "::endgroup::"
 
         echo "::group::Set Results Multi Line | sed"
@@ -70,6 +71,10 @@ runs:
 
         echo "::group::Echo Results MultiLine"
         echo $results_multi_line
+        echo "::endgroup::"
+
+        echo "::group::Echo Results MultiLine | Sed"
+        echo $results_multi_line_sed
         echo "::endgroup::"
 
         # same as next one, so commenting out
