@@ -9,9 +9,9 @@ outputs:
   totalJobs:
     description: "jobs results"
     value: "${{ steps.jobs.outputs.totalJobs }}"
-  jobs:
-    description: "jobs results"
-    value: "${{ steps.jobs.outputs.jobs }}"
+#  jobs:
+#    description: "jobs results"
+#    value: "${{ steps.jobs.outputs.jobs }}"
 #  jobsSteps:
 #    description: "jobs results"
 #    value: "${{ steps.jobs.outputs.resultsSteps }}"
@@ -34,14 +34,10 @@ runs:
         echo $info | jq '.'
         echo "::endgroup::"
 
-
-        # breaks: https://github.com/CumulusDS/serverless-template/runs/2043584138?check_suite_focus=true
-        #results=$(echo $info | jq -r '.')          # moved to down below
         #echo "results_multi_line<<EOF" >> $GITHUB_ENV
         #echo "$results" | jq -r '.' >> $GITHUB_ENV
         #echo "EOF" >> $GITHUB_ENV
         echo "::group::Set Results Multi Line"
-        # results_multi_line="$(echo $info | jq -r '.')"  # test putting in quotes so as to not break "echo ${results_multi_line} >> $GITHUB_ENV"
         results_multi_line=$(echo $info | jq -r '.')    # putting the $() statement in quotes seems to set it blank
         echo "results_multi_line<<EOF" >> $GITHUB_ENV
         #echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results_multi_line }} in later steps, though appears set properly o_O
@@ -49,43 +45,13 @@ runs:
         echo "EOF" >> $GITHUB_ENV
         echo "::endgroup::"
 
-        echo "::group::Set Results Multi Line | sed"
-        echo "results_multi_line_sed<<EOF" >> $GITHUB_ENV
-        echo $results_multi_line | sed 's/"/\\"/g' >> $GITHUB_ENV # havent tried yet
-        echo "EOF" >> $GITHUB_ENV
-        echo "::endgroup::"
-
-        echo "::group::Set Results Single Line"
-        results=$(echo $info | jq -r '.')
-        results="${results//'%'/'%25'}"
-        results="${results//$'\n'/'%0A'}"
-        results="${results//$'\r'/'%0D'}"
-        echo "::set-output name=jobs::$(echo "$results")"
-        results_single_line=$results
-        echo "results_single_line=$results_single_line" >> $GITHUB_ENV
-        echo "::endgroup::"
-
-        echo "::group::Echo Results SingleLine"
-        echo $results_single_line
-        echo "::endgroup::"
-
         echo "::group::Echo Results MultiLine"
         echo $results_multi_line
         echo "::endgroup::"
 
-        echo "::group::Echo Results MultiLine | Sed"
-        echo $results_multi_line_sed
-        echo "::endgroup::"
-
-        # same as next one, so commenting out
-        #echo "::group::Echo Results MultiLine | jq"
-        #echo $results_multi_line | jq '.'
-        #echo "::endgroup::"
-
         echo "::group::Echo Results MultiLine | jq -r "
         echo $results_multi_line | jq -r '.'
         echo "::endgroup::"
-
 
         echo "::group::How many jobs"
         item_length=$(echo $info | jq length)
@@ -93,7 +59,6 @@ runs:
         echo "::set-output name=totalJobs::$(echo "$item_length")"
         echo "totalJobs=$item_length" >> $GITHUB_ENV
         echo "::endgroup::"
-
 
         echo "::group::set environment variables per job"
         i=0
@@ -118,10 +83,10 @@ runs:
         done
         echo "::endgroup::"
       shell: bash
-#    - name: Print single_line Output
-#      id: print
-#      run: |
-#        echo "::group::print output"
-#        echo "${{ env.results_multi_line }}"
-#        echo "::endgroup::"
-#      shell: bash
+    - name: Print single_line Output
+      id: print
+      run: |
+        echo "::group::print output"
+        echo "${{ toJson(env.results_multi_line) }}"
+        echo "::endgroup::"
+      shell: bash
