@@ -9,6 +9,14 @@ inputs:
     description: 'matrix of jobs to look for'
     required: false
     default: ''
+  failureIcon:
+    description: 'icon for slack messages if to be used in future actions'
+    required: false
+    default: ':dumpsterfire:'
+  successIcon:
+    description: 'icon for slack messages if to be used in future actions'
+    required: false
+    default: ':white_check_mark:'
 outputs:
   totalJobs:
     description: "jobs results"
@@ -25,12 +33,11 @@ runs:
     - name: matrix check
       run: |
         echo "::group::Matrix check"
-        if [ -z ${{ inputs.matrix }} ]; then
+        if [[ -z "${{ inputs.matrix }}" ]]; then
           echo "no matrix is set"
           echo "matrixExists=false" >> $GITHUB_ENV
         else
-          echo "matrix is set:"
-          echo '${{ inputs.matrix }}'
+          echo "matrix is set"
           echo "matrixExists=true" >> $GITHUB_ENV
         fi
         echo ""
@@ -39,6 +46,8 @@ runs:
     - name: jobs context
       id: jobs
       run: |
+        echo "REPO=$((echo ${{ github.repository }}) | sed 's/^..........//')" >> $GITHUB_ENV
+
         JOBS=$( \
           curl -s -H 'Authorization: token ${{ inputs.token }}' \
           -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
@@ -51,7 +60,7 @@ runs:
         results=$(echo $info | jq -r '.')
 
         echo "::group::Jobs context"
-        echo ${results}
+        echo ${results} | jq -r '.'
         echo "::endgroup::"
 
         echo "::group::Set results environment variable"
@@ -69,50 +78,74 @@ runs:
 
         if [ ${{ env.matrixExists }} = true ]; then
           echo "::group::Matrix Context"
-          matrixJson=$(echo ${{ toJson(inputs.matrix) }} | jq -s)
+          matrixJson=$(echo ${{ inputs.matrix }} | jq '.')
+          echo "Jobs matrix passed in:"
           echo $matrixJson | jq -r '.'
+          echo ""
 
           if [[ $(echo matrixJson | jq -r '.include?') = null ]]; then
-            echo "no includes key"
+            echo "JSON object does not contain 'include' key."
             matrixJsonLength=$(echo $matrixJson | jq length)
             echo "Matrix has ${matrixJsonLength} objects."
           else
-            echo "JSON object has 'includes' key"
+            echo "JSON object has 'include' key."
             matrixJsonLength=$(echo $matrixJson | jq -r '.include' | jq length)
             echo "Matrix includes has ${matrixJsonLength} objects."
             matrixJson=$(echo $matrixJson | jq -r '.include')
           fi
+          echo ""
 
-          i=0 && array=()
+          i=0 && resultsArray=()
           while [ $i -lt $matrixJsonLength ]; do
+            echo "****************************************************************************"
+            echo "Matrix index ${i} "
+            echo "******************"
+            echo ""
             valuesArray=($(echo $matrixJson | jq -r --argjson index $i '.[$index] | to_entries | .[] | .value'))
             j=0
             while [ $j -lt $job_length ]; do
-              echo "Job at index ${j}"
-              echo $results | jq --argjson jndex $j '.[$jndex]'
+              echo "Job index ${j}"
+              #echo $results | jq --argjson jndex $j '.[$jndex]'
 
               if [[ ! -z $(echo $results | jq --argjson jndex $j '.[$jndex].name' | awk "$(echo "${valuesArray[@]}" | sed 's/^/\//g;s/$/\//g;s/ /\/ \&\& \//g')") ]]; then
-                array+=("${j}")
-                echo "Matching jos at indices: ${array[@]}"
-
                 name=$(echo $results | jq -r --argjson jndex $j '.[$jndex].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
+                region=${valuesArray[1]}
+                stage=${valuesArray[2]}
                 result=$(echo $results | jq -r --argjson jndex $j '.[$jndex].conclusion')
                 url=$(echo $results | jq -r --argjson jndex $j '.[$jndex].url')
 
+                if [ "$result" == "success" ]; then
+                  icon=${{ inputs.successIcon }}
+                  tense=succesful
+                  echo "${name}_icon=$icon" >> $GITHUB_ENV
+                  echo "${name}_tense=$tense" >> $GITHUB_ENV
+                elif [ "$result" == "failure" ]; then
+                  icon=${{ inputs.failureIcon }}
+                  tense=failed
+                  echo "${name}_icon=$icon" >> $GITHUB_ENV
+                  echo "${name}_tense=$tense" >> $GITHUB_ENV
+                else
+                  echo "job cancelled?"
+                fi
                 echo "Name:    $name"
                 echo "Result:  $result"
                 echo "URL:     $url"
                 echo "${name}_result=$result" >> $GITHUB_ENV
                 echo "${name}_url=$url" >> $GITHUB_ENV
-              else
-                echo "index ${j} does not have a matching job for matrix values ${valuesArray[@]}"
-              fi
+                echo "Icon:    $icon"
+                echo "Tense:   $tense"
+                echo ""
 
+              fi
               j=$((j+1))
             done
             i=$((i+1))
           done
 
+          echo ""
+          echo ""
+          echo "Matching jobs at indices: ${array[@]}"
+          echo "Non-matching jobs at indices: ${nonMatchingArray[@]}"
           echo "::endgroup::"
         else
           echo "::group::set environment variables per job"
@@ -128,8 +161,6 @@ runs:
             echo "Name:    $name"
             echo "Result:  $result"
             echo "URL:     $url"
-            #echo "::set-output name=${name}_result::$(echo "$result")"
-            #echo "::set-output name=${name}_url::$(echo "$url")"
             echo "${name}_result=$result" >> $GITHUB_ENV
             echo "${name}_url=$url" >> $GITHUB_ENV
             echo ""
