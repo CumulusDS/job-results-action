@@ -41,10 +41,10 @@ runs:
         #echo "$results" | jq -r '.' >> $GITHUB_ENV
         #echo "EOF" >> $GITHUB_ENV
         echo "::group::Set Results Multi Line"
-        results_multi_line=$(echo $info | jq -r '.')
+        results_multi_line="$(echo $info | jq -r '.')" # test putting in quotes so as to not break "echo ${results_multi_line} >> $GITHUB_ENV"
         echo "results_multi_line<<EOF" >> $GITHUB_ENV
         #echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results_multi_line }} in later steps, though appears set properly o_O
-        echo ${results_multi_line} >> $GITHUB_ENV
+        #echo ${results_multi_line} >> $GITHUB_ENV # prints out all on one line, but loses quotes - so breaks all the things
         echo "EOF" >> $GITHUB_ENV
         echo "::endgroup::"
 
