@@ -5,6 +5,10 @@ inputs:
     description: 'github token with API access'
     required: true
     default: ''
+  matrix:
+    description: 'matrix of jobs to look for'
+    required: false
+    default: ''
 outputs:
   totalJobs:
     description: "jobs results"
@@ -18,6 +22,19 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: matrix check
+      run: |
+        echo "::group::Matrix check"
+        if [ -z ${{ inputs.matrix }} ]; then
+          echo "no matrix is set"
+          echp "matrixExists=false" >> $GITHUB_ENV
+        else
+          echo "matrix is set"
+          echo ${{ toJson(inputs.matrix) }}
+          echo "matrixExists=true" >> $GITHUB_ENV
+        fi
+        echo "::endgroup::"
+      shell: bash
     - name: jobs context
       id: jobs
       run: |
@@ -30,63 +47,100 @@ runs:
           echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url}' \
           | jq -s '.'
         )
+        results=$(echo $info | jq -r '.')
+
         echo "::group::Jobs context"
         echo $info | jq '.'
         echo "::endgroup::"
 
-        #echo "results_multi_line<<EOF" >> $GITHUB_ENV
-        #echo "$results" | jq -r '.' >> $GITHUB_ENV
-        #echo "EOF" >> $GITHUB_ENV
         echo "::group::Set Results Multi Line"
-        results_multi_line=$(echo $info | jq -r '.')    # putting the $() statement in quotes seems to set it blank
-        echo "results_multi_line<<EOF" >> $GITHUB_ENV
-        #echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results_multi_line }} in later steps, though appears set properly o_O
-        echo ${results_multi_line} >> $GITHUB_ENV # prints out all on one line, but loses quotes - so breaks all the things - SO TRY toJson!!        echo "EOF" >> $GITHUB_ENV
+        echo "results<<EOF" >> $GITHUB_ENV
+        echo $info | jq -r '.' >> $GITHUB_ENV # doesn't print from ${{ env.results }} in later steps, though appears set properly o_O
+        #echo ${results} >> $GITHUB_ENV # prints out all on one line, but loses quotes - so breaks all the things - SO TRY toJson!!
         echo "EOF" >> $GITHUB_ENV
         echo "::endgroup::"
 
         echo "::group::Echo Results MultiLine"
-        echo $results_multi_line
-        echo "::endgroup::"
-
-        echo "::group::Echo Results MultiLine | jq -r "
-        echo $results_multi_line | jq -r '.'
+        #echo $results # comment out to test with just
+        echo $info | jq -r '.'
         echo "::endgroup::"
 
         echo "::group::How many jobs"
-        item_length=$(echo $info | jq length)
-        echo "${item_length} total jobs"
-        echo "::set-output name=totalJobs::$(echo "$item_length")"
-        echo "totalJobs=$item_length" >> $GITHUB_ENV
+        job_length=$(echo $info | jq length)
+        echo "${job_length} total jobs"
+        echo "::set-output name=totalJobs::$(echo "$job_length")"
+        echo "totalJobs=$job_length" >> $GITHUB_ENV
         echo "::endgroup::"
 
-        echo "::group::set environment variables per job"
-        i=0
-        while [ $i -lt $item_length ]; do
-          echo "Job at index ${i}"
-          echo $info | jq --argjson index $i '.[$index]'
+        if [ ${{ env.matrixExists }} = true ]; then
+          echo "::group::Matrix Context"
+          matrixJson=$(echo ${{ toJson(inputs.matrix) }} | jq -s)
+          echo $matrixJson | jq -r '.'
 
-          name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
-          result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
-          url=$(echo $info | jq -r --argjson index $i '.[$index].url')
+          if [[ $(echo matrixJson | jq -r '.include?') = null ]]; then
+            echo "no includes key"
+            matrixJsonLength=$(echo $matrixJson | jq length)
+            echo "Matrix has ${matrixJsonLength} objects."
+          else
+            echo "has includes key"
+            matrixJsonLength=$(echo $matrixJson | jq -r '.include' | jq length)
+            echo "Matrix includes has ${matrixJsonLength} objects."
+            matrixJson=$(echo $matrixJson | jq -r '.include')
+          fi
 
-          echo "Name:    $name"
-          echo "Result:  $result"
-          echo "URL:     $url"
-          #echo "::set-output name=${name}_result::$(echo "$result")"
-          #echo "::set-output name=${name}_url::$(echo "$url")"
-          echo "${name}_result=$result" >> $GITHUB_ENV
-          echo "${name}_url=$url" >> $GITHUB_ENV
-          echo ""
-          echo ""
-          i=$((i+1))
-        done
-        echo "::endgroup::"
+          i=0 && array=()
+          while [ $i -lt $matrixJsonLength ]; do
+            valuesArray=($(echo $matrixJson | jq -r --argjson index $i '.[$index] | to_entries | .[] | .value'))
+            j=0
+            while [ $j -lt $job_length ]; do
+              echo "Job at index ${j}"
+              echo $results | jq --argjson jndex $j '.[$jndex]'
+
+              if [[ ! -z $(echo $results | jq --argjson jndex $j '.[$jndex].name' | awk "$(echo "${valuesArray[@]}" | sed 's/^/\//g;s/$/\//g;s/ /\/ \&\& \//g')") ]]; then
+                array+=("${j}")
+                echo "Matching jos at indices: ${array[@]}"
+
+                name=$(echo $results | jq -r --argjson jndex $j '.[$jndex].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
+                result=$(echo $results | jq -r --argjson jndex $j '.[$jndex].conclusion')
+                url=$(echo $results | jq -r --argjson jndex $j '.[$jndex].url')
+
+                echo "Name:    $name"
+                echo "Result:  $result"
+                echo "URL:     $url"
+                echo "${name}_result=$result" >> $GITHUB_ENV
+                echo "${name}_url=$url" >> $GITHUB_ENV
+              else
+                echo "index ${j} does not have a matching job for matrix values ${valuesArray[@]}"
+              fi
+
+              j=$((j+1))
+            done
+            i=$((i+1))
+          done
+
+          echo "::endgroup::"
+        else
+          echo "::group::set environment variables per job"
+          i=0
+          while [ $i -lt $job_length ]; do
+            echo "Job at index ${i}"
+            echo $info | jq --argjson index $i '.[$index]'
+
+            name=$(echo $info | jq -r --argjson index $i '.[$index].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
+            result=$(echo $info | jq -r --argjson index $i '.[$index].conclusion')
+            url=$(echo $info | jq -r --argjson index $i '.[$index].url')
+
+            echo "Name:    $name"
+            echo "Result:  $result"
+            echo "URL:     $url"
+            #echo "::set-output name=${name}_result::$(echo "$result")"
+            #echo "::set-output name=${name}_url::$(echo "$url")"
+            echo "${name}_result=$result" >> $GITHUB_ENV
+            echo "${name}_url=$url" >> $GITHUB_ENV
+            echo ""
+            echo ""
+            i=$((i+1))
+          done
+          echo "::endgroup::"
+        fi
       shell: bash
-#    - name: Print single_line Output
-#      id: print
-#      run: |
-#        echo "::group::print output"
-#        echo "${{ toJson(env.results_multi_line) }}"
-#        echo "::endgroup::"
-#      shell: bash
