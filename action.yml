@@ -95,7 +95,7 @@ runs:
           fi
           echo ""
 
-          i=0 && resultsArray=()
+          i=0 && resultsArray=() && statusMessage=""
           while [ $i -lt $matrixJsonLength ]; do
             echo "****************************************************************************"
             echo "Matrix index ${i} "
@@ -109,8 +109,8 @@ runs:
 
               if [[ ! -z $(echo $results | jq --argjson jndex $j '.[$jndex].name' | awk "$(echo "${valuesArray[@]}" | sed 's/^/\//g;s/$/\//g;s/ /\/ \&\& \//g')") ]]; then
                 name=$(echo $results | jq -r --argjson jndex $j '.[$jndex].name' | tr ' ' '_' | sed -e 's/(//' -e 's/)//')
-                region=${valuesArray[1]}
-                stage=${valuesArray[2]}
+                region=${valuesArray[0]}
+                stage=${valuesArray[1]}
                 result=$(echo $results | jq -r --argjson jndex $j '.[$jndex].conclusion')
                 url=$(echo $results | jq -r --argjson jndex $j '.[$jndex].url')
 
@@ -135,7 +135,10 @@ runs:
                 echo "Icon:    $icon"
                 echo "Tense:   $tense"
                 echo ""
-
+                message="${icon} ${region} ${stage}: *<${url}|${result}>* \n\n "
+                echo $message
+                statusMessage="${statusMessage}${message}"
+                echo ""
               fi
               j=$((j+1))
             done
@@ -144,8 +147,9 @@ runs:
 
           echo ""
           echo ""
-          echo "Matching jobs at indices: ${array[@]}"
-          echo "Non-matching jobs at indices: ${nonMatchingArray[@]}"
+          echo "Slack Deployment Status Message"
+          echo "${statusMessage}"
+          echo "statusMessage=${statusMessage}" >> $GITHUB_ENV
           echo "::endgroup::"
         else
           echo "::group::set environment variables per job"
