@@ -83,10 +83,10 @@ runs:
         done
         echo "::endgroup::"
       shell: bash
-    - name: Print single_line Output
-      id: print
-      run: |
-        echo "::group::print output"
-        echo "${{ toJson(env.results_multi_line) }}"
-        echo "::endgroup::"
-      shell: bash
+#    - name: Print single_line Output
+#      id: print
+#      run: |
+#        echo "::group::print output"
+#        echo "${{ toJson(env.results_multi_line) }}"
+#        echo "::endgroup::"
+#      shell: bash
