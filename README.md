@@ -8,7 +8,11 @@ Returns results of previous jobs in workflow
 
 ### Inputs
 #### `token`
-Required input.  
+Required input.  Token with appropriate access
+
+#### `matrix`
+Non-required input.  
+Can be an output from a previous step.  Can be used to specify jobs to search for
  
 ### Outputs
 #### ``
@@ -19,7 +23,8 @@ Required input.
         id: jobs
         uses: CumulusDS/job-results-action@master
         with:
-          token: ${{  env.TOKEN_WITH_ACCESS }}
+          token: ${{ secrets.TOKEN_WITH_ACCESS }}
+          matrix: ${{ needs.unit.outputs.matrix }}
 ```
 
 wip
