@@ -50,15 +50,13 @@ runs:
         randomFact=$(curl -s https://uselessfacts.jsph.pl/random.txt\?language\=en | head -n1 | sed s'/> //')
         echo "randomFact=${randomFact}" >> $GITHUB_ENV
 
-        #notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .body')
-        notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/CumulusDS/sts-pipeline/releases | jq -r --arg version "v1.5.1" '.[] | select(.tag_name==$version) | .body')
+        notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .body')
         IFSBAK=$IFS && IFS=" "
         echo "fromApi<<EOF" >> $GITHUB_ENV
         echo $notes >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
         IFS=$IFSBAK
-        #changelog_url=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .html_url')
-        changelog_url=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/CumulusDS/sts-pipeline/releases | jq -r --arg version "v1.5.1" '.[] | select(.tag_name==$version) | .html_url')
+        changelog_url=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .html_url')
         echo "changelogAddress=${changelog_url}" >> $GITHUB_ENV
 
         echo "::group::Jobs context"
