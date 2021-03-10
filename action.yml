@@ -50,10 +50,6 @@ runs:
         randomFact=$(curl -s https://uselessfacts.jsph.pl/random.txt\?language\=en | head -n1 | sed s'/> //')
         echo "randomFact=${randomFact}" >> $GITHUB_ENV
 
-        echo "::group::changelog URL"
-        curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/CumulusDS/sts-pipeline/releases | jq -r --arg version "v1.5.1" '.[] | select(.tag_name==$version)'
-        echo "::endgroup::"
-
         #notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .body')
         notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/CumulusDS/sts-pipeline/releases | jq -r --arg version "v1.5.1" '.[] | select(.tag_name==$version) | .body')
         IFSBAK=$IFS && IFS=" "
@@ -101,7 +97,7 @@ runs:
         echo "::endgroup::"
 
         echo "::group::the rest"
-        i=0 && resultsArray=() && statusMessage=$'\n'
+        i=0 && resultsArray=() && statusMessage=$'\n' && successRate=0
         while [ $i -lt $matrixJsonLength ]; do
           valuesArray=($(echo $matrixJson | jq -r --argjson index $i '.[$index] | to_entries | .[] | .value'))
           j=0
@@ -115,6 +111,7 @@ runs:
 
               if [ "$result" == "success" ]; then
                 icon=${{ inputs.successIcon }}
+                successRate=$((successRate+1))
               elif [ "$result" == "failure" ]; then
                 icon=${{ inputs.failureIcon }}
               else
