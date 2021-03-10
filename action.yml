@@ -17,10 +17,10 @@ inputs:
     description: 'icon for slack messages if to be used in future actions'
     required: false
     default: ':white_check_mark:'
-outputs:
-  totalJobs:
-    description: "jobs results"
-    value: "${{ steps.jobs.outputs.totalJobs }}"
+#outputs:
+#  totalJobs:
+#    description: "jobs results"
+#    value: "${{ steps.jobs.outputs.totalJobs }}"
 #  jobs:
 #    description: "jobs results"
 #    value: "${{ steps.jobs.outputs.jobs }}"
@@ -46,33 +46,43 @@ runs:
     - name: jobs context
       id: jobs
       run: |
+        version=$((echo ${{ github.ref }}) | sed 's/^..........//')
+        echo "VERSION=$version" >> $GITHUB_ENV
         echo "REPO=$((echo ${{ github.repository }}) | sed 's/^..........//')" >> $GITHUB_ENV
-
         JOBS=$( \
           curl -s -H 'Authorization: token ${{ inputs.token }}' \
           -L https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs \
         )
-
         info=$(
           echo $JOBS | jq '.jobs[] | {name: .name, status: .status, conclusion: .conclusion, url: .html_url}' \
           | jq -s '.'
         )
         results=$(echo $info | jq -r '.')
 
+        randomFact=$(curl -s https://uselessfacts.jsph.pl/random.txt\?language\=en | head -n1)
+        echo "randomFact=${randomFact}" >> $GITHUB_ENV
+
+        notes=$(curl -s -H 'Authorization: token ${{ inputs.token }}' -L https://api.github.com/repos/${{ github.repository }}/releases | jq -r --arg version "$version" '.[] | select(.tag_name==$version) | .body')
+        IFSBAK=$IFS && IFS=" "
+        echo "fromApi<<EOF" >> $GITHUB_ENV
+        echo $notes >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        IFS=$IFSBAK
+
         echo "::group::Jobs context"
         echo ${results} | jq -r '.'
         echo "::endgroup::"
 
-        echo "::group::Set results environment variable"
+        #echo "::group::Set results environment variable"
         echo "results<<EOF" >> $GITHUB_ENV
         echo ${results} >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
-        echo "::endgroup::"
+        #echo "::endgroup::"
 
         echo "::group::How many jobs"
         job_length=$(echo $info | jq length)
         echo "${job_length} total jobs"
-        echo "::set-output name=totalJobs::$(echo "$job_length")"
+        #echo "::set-output name=totalJobs::$(echo "$job_length")"
         echo "totalJobs=$job_length" >> $GITHUB_ENV
         echo "::endgroup::"
 
@@ -123,18 +133,15 @@ runs:
                 else
                   echo "job cancelled?"
                 fi
-                echo "Name:    $name"
-                echo "Result:  $result"
-                echo "URL:     $url"
+                #echo "Name:    $name"
+                #echo "Result:  $result"
+                #echo "URL:     $url"
                 #echo "${name}_result=$result" >> $GITHUB_ENV
                 #echo "${name}_url=$url" >> $GITHUB_ENV
-                echo "Icon:    $icon"
-                echo ""
+                #echo "Icon:    $icon"
+                #echo ""
                 message="${icon} ${region} ${stage}: *<${url}|${result}>*"
-                echo $message
-                statusMessage="${statusMessage}"$'\n'"${message}"$'\n'
-                echo "Status Message so far:"
-                echo "$statusMessage"
+                statusMessage="${statusMessage}"$'\n'"${message}"$'\n'$'\n'
                 echo ""
               fi
               j=$((j+1))
